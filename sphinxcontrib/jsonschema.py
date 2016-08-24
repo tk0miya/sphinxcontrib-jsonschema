@@ -199,4 +199,4 @@ class JSONSchemaObject(object):
 
 
 def setup(app):
-    app.add_directive('json-schema', JSONSchemaDirective)
+    app.add_directive('jsonschema', JSONSchemaDirective)
