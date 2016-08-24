@@ -110,15 +110,16 @@ class JSONSchemaObject(object):
     @property
     def properties(self):
         props = []
-        for name, attr in self.attributes.get('properties', {}):
+        for name, attr in self.attributes.get('properties', {}).items():
             props.append((name, JSONSchemaObject(attr)))
 
-        for name, attr in self.attributes.get('patternProperties', {}):
+        for name, attr in self.attributes.get('patternProperties', {}).items():
             props.append((name, JSONSchemaObject(attr)))
 
         if isinstance(self.additionalProperties, dict):
             props.append(('.*', JSONSchemaObject(attr)))
-        return dict(props)
+
+        return OrderedDict(props)
 
     @property
     def validations(self):
