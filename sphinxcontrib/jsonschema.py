@@ -51,7 +51,10 @@ class JSONSchemaDirective(Directive):
         for prop in schema:
             row = nodes.row()
             row += self.cell(prop.name)
-            row += self.cell(prop.type)
+            if prop.required:
+                row += self.cell(prop.type + " (required)")
+            else:
+                row += self.cell(prop.type)
             row += self.cell(prop.description)
             row += self.cell('\n'.join(('* %s' % v for v in prop.validations)))
             tbody += row
@@ -84,8 +87,9 @@ class JSONSchemaObject(object):
         with io.open(filename, 'rt', encoding='utf-8') as reader:
             return cls.load(reader)
 
-    def __init__(self, name, attributes):
+    def __init__(self, name, attributes, required=False):
         self.name = name
+        self.required = required
         if isinstance(attributes, (string_types, int, float)) or attributes is None:
             self.attributes = {'type': attributes}
         else:
@@ -121,9 +125,10 @@ class JSONSchemaObject(object):
             prefix = self.name + '.'
         else:
             prefix = ''
+        required = self.attributes.get('required', [])
 
         for name, attr in self.attributes.get('properties', {}).items():
-            yield JSONSchemaObject(prefix + name, attr)
+            yield JSONSchemaObject(prefix + name, attr, name in required)
 
         for name, attr in self.attributes.get('patternProperties', {}).items():
             yield JSONSchemaObject(prefix + name, attr)

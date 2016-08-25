@@ -269,7 +269,6 @@ class TestJsonSchema(unittest.TestCase):
                          ['It must be equal to one of the elements ' +
                           'in ["string", {"type": "object", "maxProperties": 3}, null, 42]'])
 
-# test for required keyword
 # Validation for any instance type
 
     def test_semantic_validations(self):
@@ -294,17 +293,28 @@ class TestJsonSchema(unittest.TestCase):
                         "postal_code": "string"
                     }
                 }
-            }
+            },
+            "required": ["name"]
         }"""
         schema = JSONSchemaObject.loads(data)
         props = list(schema)
+
         self.assertEqual(props[0].name, 'name')
         self.assertEqual(props[0].type, 'string')
+        self.assertEqual(props[0].required, True)
+
         self.assertEqual(props[1].name, 'password')
         self.assertEqual(props[1].type, 'string')
+        self.assertEqual(props[1].required, False)
+
         self.assertEqual(props[2].name, 'address')
         self.assertEqual(props[2].type, 'object')
+        self.assertEqual(props[2].required, False)
+
         self.assertEqual(props[3].name, 'address.prefecture')
         self.assertEqual(props[3].type, 'string')
+        self.assertEqual(props[3].required, False)
+
         self.assertEqual(props[4].name, 'address.postal_code')
         self.assertEqual(props[4].type, 'string')
+        self.assertEqual(props[4].required, False)
