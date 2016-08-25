@@ -50,6 +50,7 @@ class TestJsonSchema(unittest.TestCase):
             "user_defined_attr_255": "255"
         }"""
         schema = JSONSchemaObject.loads(data)
+        self.assertEqual(schema.name, None)
         self.assertEqual(schema.description, 'test data')
         self.assertEqual(schema.title, 'test-data-2001')
         self.assertEqual(schema.type, 'number')
@@ -279,3 +280,31 @@ class TestJsonSchema(unittest.TestCase):
         schema = JSONSchemaObject.loads(data)
         self.assertEqual(schema.validations,
                          ['It must be formatted as email'])
+
+    def test_list_properties(self):
+        data = """{
+            "type": "object",
+            "properties": {
+                "name": "string",
+                "password": "string",
+                "address" : {
+                    "type": "object",
+                    "properties": {
+                        "prefecture": "string",
+                        "postal_code": "string"
+                    }
+                }
+            }
+        }"""
+        schema = JSONSchemaObject.loads(data)
+        props = list(schema)
+        self.assertEqual(props[0].name, 'name')
+        self.assertEqual(props[0].type, 'string')
+        self.assertEqual(props[1].name, 'password')
+        self.assertEqual(props[1].type, 'string')
+        self.assertEqual(props[2].name, 'address')
+        self.assertEqual(props[2].type, 'object')
+        self.assertEqual(props[3].name, 'address.prefecture')
+        self.assertEqual(props[3].type, 'string')
+        self.assertEqual(props[4].name, 'address.postal_code')
+        self.assertEqual(props[4].type, 'string')

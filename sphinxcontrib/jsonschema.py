@@ -48,9 +48,9 @@ class JSONSchemaDirective(Directive):
         tgroup += nodes.thead('', header_row)
         tbody = nodes.tbody()
         tgroup += tbody
-        for name, prop in schema.properties.items():
+        for prop in schema:
             row = nodes.row()
-            row += self.cell(name)
+            row += self.cell(prop.name)
             row += self.cell(prop.type)
             row += self.cell(prop.description)
             row += self.cell('\n'.join(('* %s' % v for v in prop.validations)))
@@ -72,27 +72,35 @@ class JSONSchemaObject(object):
     @classmethod
     def load(cls, reader):
         obj = json.load(reader, object_pairs_hook=OrderedDict)
-        return cls(obj)
+        return cls(None, obj)
 
     @classmethod
     def loads(cls, string):
         obj = json.loads(string, object_pairs_hook=OrderedDict)
-        return cls(obj)
+        return cls(None, obj)
 
     @classmethod
     def loadfromfile(cls, filename):
         with io.open(filename, 'rt', encoding='utf-8') as reader:
             return cls.load(reader)
 
-    def __init__(self, attributes):
+    def __init__(self, name, attributes):
+        self.name = name
         if isinstance(attributes, (string_types, int, float)) or attributes is None:
             self.attributes = {'type': attributes}
         else:
             self.attributes = attributes
-        return
 
     def __getattr__(self, name):
         return self.attributes.get(name, '')
+
+    def __iter__(self):
+        for prop in self.properties:
+            yield prop
+
+            if prop.type == "object":
+                for subprop in prop:
+                    yield subprop
 
     def stringify(self):
         keys = list(self.attributes.keys())
@@ -109,17 +117,19 @@ class JSONSchemaObject(object):
 
     @property
     def properties(self):
-        props = []
+        if self.name:
+            prefix = self.name + '.'
+        else:
+            prefix = ''
+
         for name, attr in self.attributes.get('properties', {}).items():
-            props.append((name, JSONSchemaObject(attr)))
+            yield JSONSchemaObject(prefix + name, attr)
 
         for name, attr in self.attributes.get('patternProperties', {}).items():
-            props.append((name, JSONSchemaObject(attr)))
+            yield JSONSchemaObject(prefix + name, attr)
 
         if isinstance(self.additionalProperties, dict):
-            props.append(('.*', JSONSchemaObject(attr)))
-
-        return OrderedDict(props)
+            yield JSONSchemaObject(prefix + '*', attr)
 
     @property
     def validations(self):
@@ -144,14 +154,14 @@ class JSONSchemaObject(object):
             rules.append('It must match to regexp "%s"' % self.pattern)
         if 'items' in self.attributes:
             if isinstance(self.items, dict):
-                items = JSONSchemaObject(self.items)
+                items = JSONSchemaObject(self.name, self.items)
                 rules.append('All items must match to %s' % items.stringify())
             else:
-                items = [JSONSchemaObject(o).stringify() for o in self.items]
+                items = [JSONSchemaObject(self.name, o).stringify() for o in self.items]
                 if self.additionalItems is True:
                     rules.append('First %d items must match to [%s]' % (len(items), ', '.join(items)))
                 elif self.additionalItems:
-                    additional = JSONSchemaObject(self.additionalItems)
+                    additional = JSONSchemaObject(self.name, self.additionalItems)
                     rules.append('First %d items must match to [%s] and others must match to %s' %
                                  (len(items), ', '.join(items), additional.stringify()))
                 else:
@@ -172,16 +182,16 @@ class JSONSchemaObject(object):
         if 'dependencies' in self.attributes:
             for name, attr in self.dependencies.items():
                 if isinstance(attr, dict):
-                    depends = JSONSchemaObject(attr).stringify()
+                    depends = JSONSchemaObject(name, attr).stringify()
                     rules.append('The "%s" property must match to %s' % (name, depends))
                 else:
-                    attr = (JSONSchemaObject(name).stringify() for name in attr)
+                    attr = (JSONSchemaObject(name, name).stringify() for name in attr)
                     rules.append('The "%s" property depends on [%s]' % (name, ', '.join(attr)))
 
         if 'enum' in self.attributes:
             enums = []
             for enum_type in self.enum:
-                enums.append(JSONSchemaObject(enum_type).stringify())
+                enums.append(JSONSchemaObject(self.name, enum_type).stringify())
 
             rules.append('It must be equal to one of the elements in [%s]' % ', '.join(enums))
         if 'allOf' in self.attributes:
