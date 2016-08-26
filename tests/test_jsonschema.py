@@ -4,7 +4,7 @@ import sys
 import json
 from shutil import rmtree
 from tempfile import mkdtemp, NamedTemporaryFile
-from sphinxcontrib.jsonschema import JSONSchemaObject
+from sphinxcontrib.jsonschema import JSONSchema
 
 if sys.version_info < (2, 7):
     import unittest2 as unittest
@@ -23,15 +23,15 @@ class TestJsonSchema(unittest.TestCase):
             tmpfile.seek(0)
 
             # load from string
-            schema = JSONSchemaObject.loads(json.dumps(data))
+            schema = JSONSchema.loads(json.dumps(data))
             self.assertEqual(data, schema.attributes)
 
             # load from readable object
-            schema = JSONSchemaObject.load(tmpfile)
+            schema = JSONSchema.load(tmpfile)
             self.assertEqual(data, schema.attributes)
 
             # load from file
-            schema = JSONSchemaObject.loadfromfile(tmpfile.name)
+            schema = JSONSchema.loadfromfile(tmpfile.name)
             self.assertEqual(data, schema.attributes)
         finally:
             tmpfile.close()
@@ -49,7 +49,7 @@ class TestJsonSchema(unittest.TestCase):
             "example": null,
             "user_defined_attr_255": "255"
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.name, None)
         self.assertEqual(schema.description, 'test data')
         self.assertEqual(schema.title, 'test-data-2001')
@@ -68,7 +68,7 @@ class TestJsonSchema(unittest.TestCase):
             "maximum": 100,
             "minimum": 0
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['It must be multiple of 20',
                           'It must be lower than 100',
@@ -82,7 +82,7 @@ class TestJsonSchema(unittest.TestCase):
             "minimum": 0,
             "exclusiveMinimum": false
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['It must be lower than 100',
                           'It must be greater than 0'])
@@ -95,7 +95,7 @@ class TestJsonSchema(unittest.TestCase):
             "minimum": 0,
             "exclusiveMinimum": true
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['It must be lower than or equal to 100',
                           'It must be greater than or equal to 0'])
@@ -107,7 +107,7 @@ class TestJsonSchema(unittest.TestCase):
             "minLength": 0,
             "pattern": "sources/.*\\\\.rst"
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['Its length must be less than or equal to 100',
                           'Its length must be greater than or equal to 0',
@@ -123,7 +123,7 @@ class TestJsonSchema(unittest.TestCase):
             "minItems": 0,
             "uniqueItems": true
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['All items must match to "number"',
                           'Its size must be less than or equal to 100',
@@ -139,7 +139,7 @@ class TestJsonSchema(unittest.TestCase):
             },
             "uniqueItems": false
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['All items must match to {"type": "number", "multipleOf": 1}'])
 
@@ -158,7 +158,7 @@ class TestJsonSchema(unittest.TestCase):
                 }
             ]
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['All items must match to ["number", "string", "number"]'])
 
@@ -176,7 +176,7 @@ class TestJsonSchema(unittest.TestCase):
             ],
             "additionalItems": false
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['All items must match to ["number", {"type": "string", "minLength": 1}]'])
 
@@ -193,7 +193,7 @@ class TestJsonSchema(unittest.TestCase):
             ],
             "additionalItems": true
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['First 2 items must match to ["number", "string"]'])
 
@@ -212,7 +212,7 @@ class TestJsonSchema(unittest.TestCase):
                 "type": "number"
             }
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['First 2 items must match to ["string", "string"] and others must match to "number"'])
 
@@ -226,7 +226,9 @@ class TestJsonSchema(unittest.TestCase):
                 "total_price": ["price", "tax"]
             }
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
+        print schema
+        print schema.attributes
         self.assertEqual(schema.validations,
                          ['Its numbers of properties must be less than or equal to 5',
                           'Its numbers of properties must be greater than or equal to 2',
@@ -245,7 +247,7 @@ class TestJsonSchema(unittest.TestCase):
                 }
             }
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['Its numbers of properties must be less than or equal to 5',
                           'Its numbers of properties must be greater than or equal to 2',
@@ -264,7 +266,7 @@ class TestJsonSchema(unittest.TestCase):
                 42
             ]
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['It must be equal to one of the elements ' +
                           'in ["string", {"type": "object", "maxProperties": 3}, null, 42]'])
@@ -273,10 +275,10 @@ class TestJsonSchema(unittest.TestCase):
 
     def test_semantic_validations(self):
         data = """{
-            "type": "object",
+            "type": "string",
             "format": "email"
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['It must be formatted as email'])
 
@@ -296,7 +298,7 @@ class TestJsonSchema(unittest.TestCase):
             },
             "required": ["name"]
         }"""
-        schema = JSONSchemaObject.loads(data)
+        schema = JSONSchema.loads(data)
         props = list(schema)
 
         self.assertEqual(props[0].name, 'name')

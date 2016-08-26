@@ -28,9 +28,9 @@ class JSONSchemaDirective(Directive):
         if self.arguments and self.content:
             raise self.warning('both argument and content. it is invalid')
         if self.arguments:
-            schema = JSONSchemaObject.loadfromfile(self.arguments[0])
+            schema = JSONSchema.loadfromfile(self.arguments[0])
         else:
-            schema = JSONSchemaObject.loadfromfile(''.join(self.content))
+            schema = JSONSchema.loadfromfile(''.join(self.content))
         if schema.type != 'object':
             raise NotImplemented
         headers = ['Name', 'Type', 'Description', 'Validations']
@@ -55,7 +55,7 @@ class JSONSchemaDirective(Directive):
                 row += self.cell(prop.type + " (required)")
             else:
                 row += self.cell(prop.type)
-            row += self.cell(prop.description)
+            row += self.cell(prop.description or '')
             row += self.cell('\n'.join(('* %s' % v for v in prop.validations)))
             tbody += row
 
@@ -70,75 +70,110 @@ class JSONSchemaDirective(Directive):
         return entry
 
 
-class JSONSchemaObject(object):
+def get_class_for(obj):
+    mapping = {
+        'null': Null,
+        'boolean': Boolean,
+        'integer': Integer,
+        'number': Number,
+        'string': String,
+        'array': Array,
+        'object': Object,
+    }
+    if isinstance(obj, string_types):
+        type = obj
+    else:
+        type = obj.get('type')
+    return mapping.get(type, Object)
 
+
+def simplify(obj):
+    if isinstance(obj, dict) and obj.keys() == ['type']:
+        type = obj.get('type')
+        if type is None:
+            return 'null'
+        elif isinstance(type, string_types):
+            return json.dumps(type)
+        else:
+            return str(type)
+    else:
+        return json.dumps(obj)
+
+
+class JSONSchema(object):
     @classmethod
     def load(cls, reader):
         obj = json.load(reader, object_pairs_hook=OrderedDict)
-        return cls(None, obj)
+        return cls.instantiate(None, obj)
 
     @classmethod
     def loads(cls, string):
         obj = json.loads(string, object_pairs_hook=OrderedDict)
-        return cls(None, obj)
+        return cls.instantiate(None, obj)
 
     @classmethod
     def loadfromfile(cls, filename):
         with io.open(filename, 'rt', encoding='utf-8') as reader:
             return cls.load(reader)
 
+    @classmethod
+    def instantiate(cls, name, obj, required=False):
+        return get_class_for(obj)(name, obj, required)
+
+
+class JSONData(object):
     def __init__(self, name, attributes, required=False):
         self.name = name
+        self.attributes = attributes
         self.required = required
-        if isinstance(attributes, (string_types, int, float)) or attributes is None:
-            self.attributes = {'type': attributes}
-        else:
-            self.attributes = attributes
 
     def __getattr__(self, name):
-        return self.attributes.get(name, '')
+        if isinstance(self.attributes, dict):
+            return self.attributes.get(name)
+        else:
+            return None
 
     def __iter__(self):
-        for prop in self.properties:
-            yield prop
-
-            if prop.type == "object":
-                for subprop in prop:
-                    yield subprop
+        return iter([])
 
     def stringify(self):
-        keys = list(self.attributes.keys())
-        if keys == ['type']:
-            if self.type is None:
-                return 'null'
-            elif isinstance(self.type, string_types):
-                return '"%s"' % self.type
-            else:
-                return str(self.type)
-        else:
-            return json.dumps(self.attributes)
-        return
-
-    @property
-    def properties(self):
-        if self.name:
-            prefix = self.name + '.'
-        else:
-            prefix = ''
-        required = self.attributes.get('required', [])
-
-        for name, attr in self.attributes.get('properties', {}).items():
-            yield JSONSchemaObject(prefix + name, attr, name in required)
-
-        for name, attr in self.attributes.get('patternProperties', {}).items():
-            yield JSONSchemaObject(prefix + name, attr)
-
-        if isinstance(self.additionalProperties, dict):
-            yield JSONSchemaObject(prefix + '*', attr)
+        return json.dumps(self.attributes)
 
     @property
     def validations(self):
         rules = []
+        if 'enum' in self.attributes:
+            enums = []
+            for enum_type in self.enum:
+                enums.append(simplify(enum_type))
+            rules.append('It must be equal to one of the elements in [%s]' % ', '.join(enums))
+        if 'allOf' in self.attributes:
+            pass
+        if 'anyOf' in self.attributes:
+            pass
+        if 'oneOf' in self.attributes:
+            pass
+        if 'not' in self.attributes:
+            pass
+        if 'definitions' in self.attributes:
+            pass
+        return rules
+
+
+class Null(JSONData):
+    type = "null"
+
+
+class Boolean(JSONData):
+    type = 'boolean'
+
+
+class Integer(JSONData):
+    type = 'integer'
+
+    @property
+    def validations(self):
+        rules = super(Integer, self).validations
         if 'multipleOf' in self.attributes:
             rules.append('It must be multiple of %s' % self.multipleOf)
         if 'maximum' in self.attributes:
@@ -151,24 +186,46 @@ class JSONSchemaObject(object):
                 rules.append('It must be greater than or equal to %s' % self.minimum)
             else:
                 rules.append('It must be greater than %s' % self.minimum)
+        return rules
+
+
+class Number(Integer):
+    type = 'number'
+
+
+class String(JSONData):
+    type = "string"
+
+    @property
+    def validations(self):
+        rules = super(String, self).validations
         if 'maxLength' in self.attributes:
             rules.append('Its length must be less than or equal to %s' % self.maxLength)
         if 'minLength' in self.attributes:
             rules.append('Its length must be greater than or equal to %s' % self.minLength)
         if 'pattern' in self.attributes:
             rules.append('It must match to regexp "%s"' % self.pattern)
+        if 'format' in self.attributes:
+            rules.append('It must be formatted as %s' % self.format)
+        return rules
+
+
+class Array(JSONData):
+    type = "array"
+
+    @property
+    def validations(self):
+        rules = super(Array, self).validations
         if 'items' in self.attributes:
             if isinstance(self.items, dict):
-                items = JSONSchemaObject(self.name, self.items)
-                rules.append('All items must match to %s' % items.stringify())
+                rules.append('All items must match to %s' % simplify(self.items))
             else:
-                items = [JSONSchemaObject(self.name, o).stringify() for o in self.items]
+                items = [simplify(o) for o in self.items]
                 if self.additionalItems is True:
                     rules.append('First %d items must match to [%s]' % (len(items), ', '.join(items)))
                 elif self.additionalItems:
-                    additional = JSONSchemaObject(self.name, self.additionalItems)
                     rules.append('First %d items must match to [%s] and others must match to %s' %
-                                 (len(items), ', '.join(items), additional.stringify()))
+                                 (len(items), ', '.join(items), simplify(self.additionalItems)))
                 else:
                     rules.append('All items must match to [%s]' % ', '.join(items))
         if 'maxItems' in self.attributes:
@@ -178,6 +235,15 @@ class JSONSchemaObject(object):
         if 'uniqueItems' in self.attributes:
             if self.uniqueItems:
                 rules.append('Its elements must be unique')
+        return rules
+
+
+class Object(JSONData):
+    type = "object"
+
+    @property
+    def validations(self):
+        rules = super(Object, self).validations
         if 'maxProperties' in self.attributes:
             rules.append('Its numbers of properties must be less than or equal to %s' % self.maxProperties)
         if 'minProperties' in self.attributes:
@@ -187,31 +253,35 @@ class JSONSchemaObject(object):
         if 'dependencies' in self.attributes:
             for name, attr in self.dependencies.items():
                 if isinstance(attr, dict):
-                    depends = JSONSchemaObject(name, attr).stringify()
-                    rules.append('The "%s" property must match to %s' % (name, depends))
+                    rules.append('The "%s" property must match to %s' % (name, simplify(attr)))
                 else:
-                    attr = (JSONSchemaObject(name, name).stringify() for name in attr)
+                    attr = (simplify(name) for name in attr)
                     rules.append('The "%s" property depends on [%s]' % (name, ', '.join(attr)))
-
-        if 'enum' in self.attributes:
-            enums = []
-            for enum_type in self.enum:
-                enums.append(JSONSchemaObject(self.name, enum_type).stringify())
-
-            rules.append('It must be equal to one of the elements in [%s]' % ', '.join(enums))
-        if 'allOf' in self.attributes:
-            pass
-        if 'anyOf' in self.attributes:
-            pass
-        if 'oneOf' in self.attributes:
-            pass
-        if 'not' in self.attributes:
-            pass
-        if 'definitions' in self.attributes:
-            pass
-        if 'format' in self.attributes:
-            rules.append('It must be formatted as %s' % self.format)
         return rules
+
+    def __iter__(self):
+        for prop in self.get_properties():
+            yield prop
+
+            if prop.type == "object":
+                for subprop in prop:
+                    yield subprop
+
+    def get_properties(self):
+        if self.name:
+            prefix = self.name + '.'
+        else:
+            prefix = ''
+        required = self.attributes.get('required', [])
+
+        for name, attr in self.attributes.get('properties', {}).items():
+            yield JSONSchema.instantiate(prefix + name, attr, name in required)
+
+        for name, attr in self.attributes.get('patternProperties', {}).items():
+            yield JSONSchema.instantiate(prefix + name, attr)
+
+        if isinstance(self.additionalProperties, dict):
+            yield JSONSchema.instantiate(prefix + '*', attr)
 
 
 def setup(app):
