@@ -150,6 +150,19 @@ class TestJsonSchema(unittest.TestCase):
         schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations, [])
 
+    def test_array_validations4(self):
+        data = """{
+            "type": "array",
+            "items": {
+                    "type": "number",
+                    "maximum": 100
+            },
+            "additionalItems": false
+        }"""
+        schema = JSONSchema.loads(data)
+        self.assertEqual(schema.validations,
+                         ['It must be lower than 100'])
+
     def test_object_validations1(self):
         data = """{
             "type": "object",

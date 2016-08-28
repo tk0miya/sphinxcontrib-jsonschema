@@ -233,6 +233,11 @@ class Array(JSONData):
         if 'uniqueItems' in self.attributes:
             if self.uniqueItems:
                 rules.append('Its elements must be unique')
+        if isinstance(self.items, dict):
+            item = JSONSchema.instantiate(self.name, self.items)
+            if item.type not in ('array', 'object'):
+                rules.extend(item.validations)
+
         return rules
 
     def __iter__(self):
@@ -243,8 +248,6 @@ class Array(JSONData):
             array = JSONSchema.instantiate(self.name[:-2], self.attributes)
             array.type = 'array[%s]' % item.get_typename()
             yield array
-
-            # TODO: should be inherit if items is not an object or array
 
             # properties of items
             for prop in item:
