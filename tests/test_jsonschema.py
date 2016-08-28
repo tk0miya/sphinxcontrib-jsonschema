@@ -253,8 +253,7 @@ class TestJsonSchema(unittest.TestCase):
                 { "type": "number" },
                 { "type": "string" },
                 { "type": "number" }
-            ],
-            "additionalItems": false
+            ]
         }"""
         schema = JSONSchema.loads(data)
         props = list(schema)
@@ -271,6 +270,43 @@ class TestJsonSchema(unittest.TestCase):
 
         self.assertEqual(props[3].name, '[2]')
         self.assertEqual(props[3].type, 'number')
+
+    def test_list_object_properties4(self):
+        data = """{
+            "type": "array",
+            "items": [
+                { "type": "number" },
+                { "type": "string" },
+                { "type": "number" }
+            ],
+            "additionalItems": {
+                "type": "object",
+                "properties": {
+                    "name": "string"
+                }
+            }
+        }"""
+        schema = JSONSchema.loads(data)
+        props = list(schema)
+        self.assertEqual(len(props), 6)
+
+        self.assertEqual(props[0].name, '[]')
+        self.assertEqual(props[0].type, 'array[number,string,number,object+]')
+
+        self.assertEqual(props[1].name, '[0]')
+        self.assertEqual(props[1].type, 'number')
+
+        self.assertEqual(props[2].name, '[1]')
+        self.assertEqual(props[2].type, 'string')
+
+        self.assertEqual(props[3].name, '[2]')
+        self.assertEqual(props[3].type, 'number')
+
+        self.assertEqual(props[4].name, '[3+]')
+        self.assertEqual(props[4].type, 'object')
+
+        self.assertEqual(props[5].name, '[3+].name')
+        self.assertEqual(props[5].type, 'string')
 
     def test_list_object_properties(self):
         data = """{

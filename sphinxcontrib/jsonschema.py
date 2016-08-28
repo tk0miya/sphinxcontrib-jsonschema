@@ -250,14 +250,24 @@ class Array(JSONData):
             for prop in item:
                 yield prop
         else:
+            # create items and additionalItems objects
             items = []
+            types = []
             for i, item in enumerate(self.items):
                 name = '%s[%d]' % (self.name[:-2], i)
                 items.append(JSONSchema.instantiate(name, item))
+                types.append(items[-1].get_typename())
+
+            if isinstance(self.additionalItems, dict):
+                name = '%s[%d+]' % (self.name[:-2], len(items))
+                additional = JSONSchema.instantiate(name, self.additionalItems)
+                types.append(additional.get_typename() + '+')
+            else:
+                additional = None
 
             # array object itself
             array = JSONSchema.instantiate(self.name[:-2], self.attributes)
-            array.type = 'array[%s]' % ','.join(item.get_typename() for item in items)
+            array.type = 'array[%s]' % ','.join(types)
             yield array
 
             # properties of items
@@ -266,7 +276,12 @@ class Array(JSONData):
                 for prop in item:
                     yield prop
 
-            # TODO: additionalItems
+            # additionalItems
+            if additional:
+                yield additional
+
+                for prop in additional:
+                    yield prop
 
 
 class Object(JSONData):
