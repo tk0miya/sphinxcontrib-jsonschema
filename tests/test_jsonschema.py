@@ -116,105 +116,39 @@ class TestJsonSchema(unittest.TestCase):
     def test_array_validations1(self):
         data = """{
             "type": "array",
-            "items": {
-                "type": "number"
-            },
+            "items": { "type": "number" },
             "maxItems": 100,
             "minItems": 0,
             "uniqueItems": true
         }"""
         schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
-                         ['All items must match to "number"',
-                          'Its size must be less than or equal to 100',
+                         ['Its size must be less than or equal to 100',
                           'Its size must be greater than or equal to 0',
                           'Its elements must be unique'])
 
     def test_array_validations2(self):
         data = """{
             "type": "array",
-            "items": {
-                "type": "number",
-                "multipleOf": 1
-            },
-            "uniqueItems": false
-        }"""
-        schema = JSONSchema.loads(data)
-        self.assertEqual(schema.validations,
-                         ['All items must match to {"type": "number", "multipleOf": 1}'])
-
-    def test_array_validations3(self):
-        data = """{
-            "type": "array",
             "items": [
-                {
-                    "type": "number"
-                },
-                {
-                    "type": "string"
-                },
-                {
-                    "type": "number"
-                }
-            ]
-        }"""
-        schema = JSONSchema.loads(data)
-        self.assertEqual(schema.validations,
-                         ['All items must match to ["number", "string", "number"]'])
-
-    def test_array_validations4(self):
-        data = """{
-            "type": "array",
-            "items": [
-                {
-                    "type": "number"
-                },
-                {
-                    "type": "string",
-                    "minLength": 1
-                }
-            ],
-            "additionalItems": false
-        }"""
-        schema = JSONSchema.loads(data)
-        self.assertEqual(schema.validations,
-                         ['All items must match to ["number", {"type": "string", "minLength": 1}]'])
-
-    def test_array_validations5(self):
-        data = """{
-            "type": "array",
-            "items": [
-                {
-                    "type": "number"
-                },
-                {
-                    "type": "string"
-                }
+                { "type": "number" }
             ],
             "additionalItems": true
         }"""
         schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
-                         ['First 2 items must match to ["number", "string"]'])
+                         ['It allows additional items'])
 
-    def test_array_validations6(self):
+    def test_array_validations3(self):
         data = """{
             "type": "array",
             "items": [
-                {
-                    "type": "string"
-                },
-                {
-                    "type": "string"
-                }
+                { "type": "number" }
             ],
-            "additionalItems": {
-                "type": "number"
-            }
+            "additionalItems": false
         }"""
         schema = JSONSchema.loads(data)
-        self.assertEqual(schema.validations,
-                         ['First 2 items must match to ["string", "string"] and others must match to "number"'])
+        self.assertEqual(schema.validations, [])
 
     def test_object_validations1(self):
         data = """{
@@ -227,8 +161,6 @@ class TestJsonSchema(unittest.TestCase):
             }
         }"""
         schema = JSONSchema.loads(data)
-        print schema
-        print schema.attributes
         self.assertEqual(schema.validations,
                          ['Its numbers of properties must be less than or equal to 5',
                           'Its numbers of properties must be greater than or equal to 2',
@@ -282,7 +214,65 @@ class TestJsonSchema(unittest.TestCase):
         self.assertEqual(schema.validations,
                          ['It must be formatted as email'])
 
-    def test_list_properties(self):
+    def test_list_object_properties1(self):
+        data = """{
+            "type": "array",
+            "items": {
+                "type": "number",
+                "multipleOf": 1
+            },
+            "uniqueItems": false
+        }"""
+        schema = JSONSchema.loads(data)
+        props = list(schema)
+        self.assertEqual(len(props), 1)
+
+        self.assertEqual(props[0].name, '[]')
+        self.assertEqual(props[0].type, 'array[number]')
+
+    def test_list_object_properties2(self):
+        data = """{
+            "type": "array",
+            "items": {
+                "type": "object",
+                "title": "Human"
+            },
+            "uniqueItems": false
+        }"""
+        schema = JSONSchema.loads(data)
+        props = list(schema)
+        self.assertEqual(len(props), 1)
+
+        self.assertEqual(props[0].name, '[]')
+        self.assertEqual(props[0].type, 'array[Human]')
+
+    def test_list_object_properties3(self):
+        data = """{
+            "type": "array",
+            "items": [
+                { "type": "number" },
+                { "type": "string" },
+                { "type": "number" }
+            ],
+            "additionalItems": false
+        }"""
+        schema = JSONSchema.loads(data)
+        props = list(schema)
+        self.assertEqual(len(props), 4)
+
+        self.assertEqual(props[0].name, '[]')
+        self.assertEqual(props[0].type, 'array[number,string,number]')
+
+        self.assertEqual(props[1].name, '[0]')
+        self.assertEqual(props[1].type, 'number')
+
+        self.assertEqual(props[2].name, '[1]')
+        self.assertEqual(props[2].type, 'string')
+
+        self.assertEqual(props[3].name, '[2]')
+        self.assertEqual(props[3].type, 'number')
+
+    def test_list_object_properties(self):
         data = """{
             "type": "object",
             "properties": {
@@ -300,6 +290,7 @@ class TestJsonSchema(unittest.TestCase):
         }"""
         schema = JSONSchema.loads(data)
         props = list(schema)
+        self.assertEqual(len(props), 5)
 
         self.assertEqual(props[0].name, 'name')
         self.assertEqual(props[0].type, 'string')

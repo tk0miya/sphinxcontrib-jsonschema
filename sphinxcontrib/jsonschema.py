@@ -31,8 +31,6 @@ class JSONSchemaDirective(Directive):
             schema = JSONSchema.loadfromfile(self.arguments[0])
         else:
             schema = JSONSchema.loadfromfile(''.join(self.content))
-        if schema.type != 'object':
-            raise NotImplemented
         headers = ['Name', 'Type', 'Description', 'Validations']
         widths = [1, 1, 1, 2]
         tgroup = nodes.tgroup(cols=len(headers))
@@ -136,6 +134,9 @@ class JSONData(object):
     def __iter__(self):
         return iter([])
 
+    def get_typename(self):
+        return self.type
+
     def stringify(self):
         return json.dumps(self.attributes)
 
@@ -213,21 +214,18 @@ class String(JSONData):
 class Array(JSONData):
     type = "array"
 
+    def __init__(self, name, attributes, required=False):
+        if name:
+            name += '[]'
+        else:
+            name = '[]'
+        super(Array, self).__init__(name, attributes, required)
+
     @property
     def validations(self):
         rules = super(Array, self).validations
-        if 'items' in self.attributes:
-            if isinstance(self.items, dict):
-                rules.append('All items must match to %s' % simplify(self.items))
-            else:
-                items = [simplify(o) for o in self.items]
-                if self.additionalItems is True:
-                    rules.append('First %d items must match to [%s]' % (len(items), ', '.join(items)))
-                elif self.additionalItems:
-                    rules.append('First %d items must match to [%s] and others must match to %s' %
-                                 (len(items), ', '.join(items), simplify(self.additionalItems)))
-                else:
-                    rules.append('All items must match to [%s]' % ', '.join(items))
+        if self.additionalItems is True:
+            rules.append('It allows additional items')
         if 'maxItems' in self.attributes:
             rules.append('Its size must be less than or equal to %s' % self.maxItems)
         if 'minItems' in self.attributes:
@@ -237,9 +235,48 @@ class Array(JSONData):
                 rules.append('Its elements must be unique')
         return rules
 
+    def __iter__(self):
+        if isinstance(self.items, dict):
+            item = JSONSchema.instantiate(self.name, self.items)
+
+            # array object itself
+            array = JSONSchema.instantiate(self.name[:-2], self.attributes)
+            array.type = 'array[%s]' % item.get_typename()
+            yield array
+
+            # TODO: should be inherit if items is not an object or array
+
+            # properties of items
+            for prop in item:
+                yield prop
+        else:
+            items = []
+            for i, item in enumerate(self.items):
+                name = '%s[%d]' % (self.name[:-2], i)
+                items.append(JSONSchema.instantiate(name, item))
+
+            # array object itself
+            array = JSONSchema.instantiate(self.name[:-2], self.attributes)
+            array.type = 'array[%s]' % ','.join(item.get_typename() for item in items)
+            yield array
+
+            # properties of items
+            for item in items:
+                yield item
+                for prop in item:
+                    yield prop
+
+            # TODO: additionalItems
+
 
 class Object(JSONData):
     type = "object"
+
+    def get_typename(self):
+        if self.title:
+            return self.title
+        else:
+            return self.type
 
     @property
     def validations(self):
