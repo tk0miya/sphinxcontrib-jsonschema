@@ -25,12 +25,16 @@ class JSONSchemaDirective(Directive):
     required_arguments = 1
 
     def run(self):
-        if self.arguments and self.content:
-            raise self.warning('both argument and content. it is invalid')
-        if self.arguments:
-            schema = JSONSchema.loadfromfile(self.arguments[0])
-        else:
-            schema = JSONSchema.loadfromfile(''.join(self.content))
+        try:
+            if self.arguments and self.content:
+                raise self.warning('both argument and content. it is invalid')
+            if self.arguments:
+                schema = JSONSchema.loadfromfile(self.arguments[0])
+            else:
+                schema = JSONSchema.loadfromfile(''.join(self.content))
+        except ValueError as exc:
+            raise self.error('Failed to parse JSON Schema: %s' % exc)
+
         headers = ['Name', 'Type', 'Description', 'Validations']
         widths = [1, 1, 1, 2]
         tgroup = nodes.tgroup(cols=len(headers))
