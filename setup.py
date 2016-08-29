@@ -8,7 +8,7 @@ requires = ['Sphinx>=0.6']
 
 setup(
     name='sphinxcontrib-jsonschema',
-    version='0.1.0',
+    version='0.9.0',
     url='https://github.com/tk0miya/sphinxcontrib-jsonschema',
     license='BSD',
     author='Takeshi KOMIYA',
