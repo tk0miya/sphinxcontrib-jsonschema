@@ -6,5 +6,6 @@
 .cache/
 .tox/
 bin/
+dist/
 include/
 lib/
