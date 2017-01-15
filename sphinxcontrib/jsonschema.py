@@ -6,6 +6,7 @@
     :license: BSD, see LICENSE for details.
 """
 import io
+import os
 import sys
 from six import string_types
 from docutils import nodes
@@ -25,11 +26,19 @@ class JSONSchemaDirective(Directive):
     required_arguments = 1
 
     def run(self):
+        env = self.state.document.settings.env
         try:
             if self.arguments and self.content:
                 raise self.warning('both argument and content. it is invalid')
             if self.arguments:
-                schema = JSONSchema.loadfromfile(self.arguments[0])
+                dirname = os.path.dirname(env.doc2path(env.docname, base=None))
+                relpath = os.path.join(dirname, self.arguments[0])
+                if not os.access(os.path.join(env.srcdir, relpath), os.R_OK):
+                    raise self.warning('JSON Schema file not readable: %s' %
+                                       self.arguments[0])
+                env.note_dependency(relpath)
+
+                schema = JSONSchema.loadfromfile(relpath)
             else:
                 schema = JSONSchema.loadfromfile(''.join(self.content))
         except ValueError as exc:
