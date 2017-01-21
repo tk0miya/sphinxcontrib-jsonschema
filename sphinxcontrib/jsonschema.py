@@ -86,6 +86,8 @@ def get_class_for(obj):
         type = obj
     else:
         type = obj.get('type')
+    if isinstance(type,list):
+        return Multiple
     return mapping.get(type, Object)
 
 
@@ -343,5 +345,15 @@ class Object(JSONData):
             yield JSONSchema.instantiate(prefix + '*', attr)
 
 
+class Multiple(JSONData):
+    def __init__(self, name, attributes, required):
+        types=attributes["type"]
+        self.types=types
+        self.type="AnyOf"+str(self.types)
+        super(Multiple, self).__init__(name, attributes, required)
+        
+    def get_typename(self):
+        return "any of "+str(self.types)
+    
 def setup(app):
     app.add_directive('jsonschema', JSONSchemaDirective)
