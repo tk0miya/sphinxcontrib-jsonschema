@@ -349,11 +349,8 @@ class Multiple(JSONData):
     def __init__(self, name, attributes, required):
         types=attributes["type"]
         self.types=types
-        self.type="AnyOf"+str(self.types)
+        self.type="(%s)"%(" or ".join(self.types))
         super(Multiple, self).__init__(name, attributes, required)
-        
-    def get_typename(self):
-        return "any of "+str(self.types)
     
 def setup(app):
     app.add_directive('jsonschema', JSONSchemaDirective)
