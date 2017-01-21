@@ -61,7 +61,7 @@ class TestJsonSchema(unittest.TestCase):
         self.assertEqual(schema.example, None)
         self.assertEqual(schema.user_defined_attr_255, "255")
 
-    def test_number_varidations1(self):
+    def test_number_validations1(self):
         data = """{
             "type": "number",
             "multipleOf": 20,
@@ -74,7 +74,7 @@ class TestJsonSchema(unittest.TestCase):
                           'It must be lower than 100',
                           'It must be greater than 0'])
 
-    def test_number_varidations2(self):
+    def test_number_validations2(self):
         data = """{
             "type": "number",
             "maximum": 100,
@@ -87,7 +87,7 @@ class TestJsonSchema(unittest.TestCase):
                          ['It must be lower than 100',
                           'It must be greater than 0'])
 
-    def test_number_varidations3(self):
+    def test_number_validations3(self):
         data = """{
             "type": "number",
             "maximum": 100,
@@ -360,3 +360,11 @@ class TestJsonSchema(unittest.TestCase):
         self.assertEqual(props[4].name, 'address.postal_code')
         self.assertEqual(props[4].type, 'string')
         self.assertEqual(props[4].required, False)
+
+
+    def test_multi_type(self):
+        data = """{
+            "type": ["string","null"]
+        }"""
+        schema = JSONSchema.loads(data)
+        self.assertEqual(schema.type,"AnyOf"+str(["string","null"]))
