@@ -360,3 +360,11 @@ class TestJsonSchema(unittest.TestCase):
         self.assertEqual(props[4].name, 'address.postal_code')
         self.assertEqual(props[4].type, 'string')
         self.assertEqual(props[4].required, False)
+
+
+    def test_multi_type(self):
+        data = """{
+            "type": ["string","null"]
+        }"""
+        schema = JSONSchema.loads(data)
+        self.assertEqual(schema.type,"AnyOf"+str(["string","null"]))
