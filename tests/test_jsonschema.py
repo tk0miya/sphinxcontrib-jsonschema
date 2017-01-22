@@ -360,3 +360,27 @@ class TestJsonSchema(unittest.TestCase):
         self.assertEqual(props[4].name, 'address.postal_code')
         self.assertEqual(props[4].type, 'string')
         self.assertEqual(props[4].required, False)
+
+    def test_union_validations(self):
+        data = """{
+            "type": ["number", "string"],
+            "title": "union title",
+            "description": "union description",
+            "maximum": 100,
+            "minimum": 0,
+            "maxLength": 100,
+            "minLength": 0
+        }"""
+        schema = JSONSchema.loads(data)
+        self.assertEqual(schema.description, 'union description')
+        self.assertEqual(schema.title, 'union title')
+        self.assertEqual(schema.type, '[number, string]')
+        self.assertEqual(schema.maximum, 100)
+        self.assertEqual(schema.minimum, 0)
+        self.assertEqual(schema.maxLength, 100)
+        self.assertEqual(schema.minLength, 0)
+        self.assertEqual(schema.validations,
+                         ['It must be lower than 100',
+                          'It must be greater than 0',
+                          'Its length must be less than or equal to 100',
+                          'Its length must be greater than or equal to 0'])

@@ -95,7 +95,11 @@ def get_class_for(obj):
         type = obj
     else:
         type = obj.get('type')
-    return mapping.get(type, Object)
+    if isinstance(type, list):
+        # returns Union class for "type: [integer, number]"
+        return Union(type)
+    else:
+        return mapping.get(type, Object)
 
 
 def simplify(obj):
@@ -130,6 +134,30 @@ class JSONSchema(object):
     @classmethod
     def instantiate(cls, name, obj, required=False):
         return get_class_for(obj)(name, obj, required)
+
+
+def Union(types):
+    class Union(JSONData):
+        def __init__(self, name, attributes, required=False):
+            super(Union, self).__init__(name, attributes, required)
+            self.elements = []
+            for type in types:
+                elem = get_class_for(type)(name, attributes, required)
+                self.elements.append(elem)
+
+        @property
+        def type(self):
+            return '[%s]' % ', '.join(types)
+
+        @property
+        def validations(self):
+            rules = []
+            for elem in self.elements:
+                rules.extend(elem.validations)
+
+            return rules
+
+    return Union
 
 
 class JSONData(object):
