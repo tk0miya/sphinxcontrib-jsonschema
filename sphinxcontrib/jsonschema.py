@@ -38,7 +38,7 @@ class JSONSchemaDirective(Directive):
                                        self.arguments[0])
                 env.note_dependency(relpath)
 
-                schema = JSONSchema.loadfromfile(relpath)
+                schema = JSONSchema.loadfromfile(os.path.join(env.srcdir, relpath))
             else:
                 schema = JSONSchema.loadfromfile(''.join(self.content))
         except ValueError as exc:
