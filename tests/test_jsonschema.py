@@ -71,8 +71,8 @@ class TestJsonSchema(unittest.TestCase):
         schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
                          ['It must be multiple of 20',
-                          'It must be lower than 100',
-                          'It must be greater than 0'])
+                          'It must be lower than or equal to 100',
+                          'It must be greater than or equal to 0'])
 
     def test_number_validations2(self):
         data = """{
@@ -84,8 +84,8 @@ class TestJsonSchema(unittest.TestCase):
         }"""
         schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
-                         ['It must be lower than 100',
-                          'It must be greater than 0'])
+                         ['It must be lower than or equal to 100',
+                          'It must be greater than or equal to 0'])
 
     def test_number_validations3(self):
         data = """{
@@ -97,8 +97,8 @@ class TestJsonSchema(unittest.TestCase):
         }"""
         schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
-                         ['It must be lower than or equal to 100',
-                          'It must be greater than or equal to 0'])
+                         ['It must be lower than 100',
+                          'It must be greater than 0'])
 
     def test_string_validations(self):
         data = """{
@@ -161,7 +161,7 @@ class TestJsonSchema(unittest.TestCase):
         }"""
         schema = JSONSchema.loads(data)
         self.assertEqual(schema.validations,
-                         ['It must be lower than 100'])
+                         ['It must be lower than or equal to 100'])
 
     def test_object_validations1(self):
         data = """{
@@ -380,7 +380,7 @@ class TestJsonSchema(unittest.TestCase):
         self.assertEqual(schema.maxLength, 100)
         self.assertEqual(schema.minLength, 0)
         self.assertEqual(schema.validations,
-                         ['It must be lower than 100',
-                          'It must be greater than 0',
+                         ['It must be lower than or equal to 100',
+                          'It must be greater than or equal to 0',
                           'Its length must be less than or equal to 100',
                           'Its length must be greater than or equal to 0'])

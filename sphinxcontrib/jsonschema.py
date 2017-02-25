@@ -221,14 +221,14 @@ class Integer(JSONData):
             rules.append('It must be multiple of %s' % self.multipleOf)
         if 'maximum' in self.attributes:
             if self.exclusiveMaximum:
-                rules.append('It must be lower than or equal to %s' % self.maximum)
-            else:
                 rules.append('It must be lower than %s' % self.maximum)
+            else:
+                rules.append('It must be lower than or equal to %s' % self.maximum)
         if 'minimum' in self.attributes:
             if self.exclusiveMinimum:
-                rules.append('It must be greater than or equal to %s' % self.minimum)
-            else:
                 rules.append('It must be greater than %s' % self.minimum)
+            else:
+                rules.append('It must be greater than or equal to %s' % self.minimum)
         return rules
 
 
