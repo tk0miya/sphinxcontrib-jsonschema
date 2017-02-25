@@ -33,12 +33,13 @@ class JSONSchemaDirective(Directive):
             if self.arguments:
                 dirname = os.path.dirname(env.doc2path(env.docname, base=None))
                 relpath = os.path.join(dirname, self.arguments[0])
-                if not os.access(os.path.join(env.srcdir, relpath), os.R_OK):
+                abspath = os.path.join(env.srcdir, relpath)
+                if not os.access(abspath, os.R_OK):
                     raise self.warning('JSON Schema file not readable: %s' %
                                        self.arguments[0])
                 env.note_dependency(relpath)
 
-                schema = JSONSchema.loadfromfile(os.path.join(env.srcdir, relpath))
+                schema = JSONSchema.loadfromfile(abspath)
             else:
                 schema = JSONSchema.loadfromfile(''.join(self.content))
         except ValueError as exc:
