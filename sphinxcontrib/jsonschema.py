@@ -21,6 +21,35 @@ else:
     from collections import OrderedDict
 
 
+def is_ref(obj):
+    return (isinstance(obj, (dict, OrderedDict)) and len(obj) == 1 and isinstance(obj.get("$ref", None), string_types))
+
+
+def resolve_ref(obj, root):
+    if is_ref(obj):
+        ref = obj["$ref"]
+        parts = ref.split("/")
+        if parts and parts[0] == "#":  # only resolve ref in same document
+            current = root
+            for p in parts[1:]:
+                if isinstance(current, (list, tuple)):
+                    current = current[int(p)]
+                else:
+                    current = current[p]
+            return current
+    return obj
+
+
+def resolve_all_refs(obj, root):
+    obj = resolve_ref(obj, root)
+    if isinstance(obj, (dict, OrderedDict)):
+        return OrderedDict((k, resolve_all_refs(v, root)) for k, v in obj.items())
+    elif isinstance(obj, (list, tuple)):
+        return [resolve_all_refs(e, root) for e in obj]
+    else:
+        return obj
+
+
 class JSONSchemaDirective(Directive):
     has_content = True
     required_arguments = 1
@@ -120,11 +149,13 @@ class JSONSchema(object):
     @classmethod
     def load(cls, reader):
         obj = json.load(reader, object_pairs_hook=OrderedDict)
+        obj = resolve_all_refs(obj, obj)
         return cls.instantiate(None, obj)
 
     @classmethod
     def loads(cls, string):
         obj = json.loads(string, object_pairs_hook=OrderedDict)
+        obj = resolve_all_refs(obj, obj)
         return cls.instantiate(None, obj)
 
     @classmethod
