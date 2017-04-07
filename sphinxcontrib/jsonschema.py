@@ -8,6 +8,7 @@
 import io
 import os
 import sys
+import jsonref
 from six import string_types
 from docutils import nodes
 from docutils.statemachine import ViewList
@@ -119,12 +120,12 @@ def simplify(obj):
 class JSONSchema(object):
     @classmethod
     def load(cls, reader):
-        obj = json.load(reader, object_pairs_hook=OrderedDict)
+        obj = jsonref.load(reader, object_pairs_hook=OrderedDict)
         return cls.instantiate(None, obj)
 
     @classmethod
     def loads(cls, string):
-        obj = json.loads(string, object_pairs_hook=OrderedDict)
+        obj = jsonref.loads(string, object_pairs_hook=OrderedDict)
         return cls.instantiate(None, obj)
 
     @classmethod
