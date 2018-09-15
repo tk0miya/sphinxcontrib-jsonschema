@@ -3,7 +3,7 @@
 import sys
 from collections import OrderedDict
 import json
-from sphinxcontrib.jsonschema import resolve_all_refs, resolve_ref
+from sphinxcontrib.jsonschema import JSONSchema
 
 if sys.version_info < (2, 7):
     import unittest2 as unittest
@@ -12,15 +12,8 @@ else:
 
 
 class TestJSONReference(unittest.TestCase):
-    def test_resolve_ref(self):
-        thing = OrderedDict({"title": "stuff"})
-        ref = {"$ref": "#/definitions/somename/0"}
-        data = {"definitions": {"somename": [thing]}}
-        resolved = resolve_ref(ref, data)
-        self.assertEqual(resolved, thing)
-
-    def test_resolve_all_refs(self):
-        data1 = json.loads("""{
+    def test_jsonschema_loads(self):
+        resolved = JSONSchema.loads("""{
             "definitions": {
                 "thing": {
                     "title": "stuff"
@@ -29,8 +22,8 @@ class TestJSONReference(unittest.TestCase):
             "properties": {
                 "a": {"$ref": "#/definitions/thing"}
             }
-        }""", object_pairs_hook=OrderedDict)
-        data2 = json.loads("""{
+        }""").attributes
+        expected = json.loads("""{
             "definitions": {
                 "thing": {
                     "title": "stuff"
@@ -43,5 +36,4 @@ class TestJSONReference(unittest.TestCase):
                 }
             }
         }""", object_pairs_hook=OrderedDict)
-        resolved = resolve_all_refs(data1, data1)
-        self.assertEqual(resolved, data2)
+        self.assertEqual(resolved, expected)
